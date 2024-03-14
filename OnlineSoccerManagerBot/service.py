@@ -46,10 +46,14 @@ class OnlineSoccerManagerService:
                 time.sleep(5)
 
                 # Click in the login button
-                print(Fore.YELLOW + 'Pressing Login Button and Waiting 5 seconds...' + Style.RESET_ALL)
-                self.driver.find_element('css selector', '.btn-alternative').click()
-                time.sleep(5)
-
+                # Wait up to 10 seconds before throwing a TimeoutException unless it finds the element to be clickable.
+                login_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, '.btn-alternative'))
+                )
+                # Once the login button is clickable, click it.
+                login_button.click()
+                print(Fore.YELLOW + 'Login Button clicked. Waiting 5 seconds for next actions...' + Style.RESET_ALL)
+                time.sleep(5)  # Keep the sleep if you need to wait for something after the click.
                 # Enter the user name
                 self.driver.find_element("css selector", '#manager-name').send_keys(self.user)
                 print(Fore.GREEN + 'Username pasted: ' + self.user + Style.RESET_ALL)
