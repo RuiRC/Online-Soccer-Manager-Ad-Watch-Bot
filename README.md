@@ -6,6 +6,8 @@ Currently Ad Detection works by waiting 7 seconds after clicking the ad button f
 
 If you have PiHole or any other alternative to it consider running this script on a host machine with a different DNS i.e: 8.8.8.8 as it stands your PiHole may block the ads from loading which causes issues in the script
 
+Still has some bugs when it comes to ads with a countdown to close
+
 If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicardona
 
 ## Prerequisites
