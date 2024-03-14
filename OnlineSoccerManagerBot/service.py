@@ -254,21 +254,27 @@ class OnlineSoccerManagerService:
                         # Countdown scenario
                         time_left = int(countdown_match.group(1))
                         print(Fore.YELLOW + f'Countdown detected: {time_left}s to close...' + Style.RESET_ALL)
-                        while time_left > 0:
+                        while True:
                             time.sleep(1)
-                            time_left -= 1
                             try:
                                 ad_status_element = WebDriverWait(self.driver, 10).until(
                                     EC.visibility_of_element_located((By.CSS_SELECTOR, '#duration-text-aip'))
                                 )
                                 ad_status_text = ad_status_element.text
-                                countdown_match = re.search(r'(\d+)s to close', ad_status_text)
-                                if countdown_match:
-                                    time_left = int(countdown_match.group(1))
-                                    print(Fore.YELLOW + f'{time_left}s to close...' + Style.RESET_ALL)
+                                new_countdown_match = re.search(r'(\d+)s to close', ad_status_text)
+                                if new_countdown_match:
+                                    new_time_left = int(new_countdown_match.group(1))
+                                    if new_time_left < time_left:
+                                        time_left = new_time_left
+                                        print(Fore.YELLOW + f'{time_left}s to close...' + Style.RESET_ALL)
+                                    if time_left == 0:
+                                        break  # Exit loop if countdown reaches 0
+                                else:
+                                    # If countdown text no longer present, assume countdown finished
+                                    break
                             except StaleElementReferenceException:
                                 print(Fore.RED + "Element reference became stale. Trying to locate again." + Style.RESET_ALL)
-                                continue  # This will cause the loop to attempt to find and use the element again
+                                continue  # Attempt to find and use the element again
                         print(Fore.GREEN + "Countdown finished, waiting for close button." + Style.RESET_ALL)
                         # Attempt to click the close button after countdown
                         try:
@@ -291,7 +297,7 @@ class OnlineSoccerManagerService:
                             print(Fore.YELLOW + f'Ad duration is {total_ad_duration} seconds, waiting for ad to finish...' + Style.RESET_ALL)
                             time.sleep(total_ad_duration + 5)
                             self.getTokensAmount()
-                            
+
             except Exception as e:
                 print(Fore.RED + f"Error occurred while watching ad: {e}\nRefreshing page and retrying..." + Style.RESET_ALL)
                 self.driver.refresh()  # Refresh the page to attempt to recover from the error
