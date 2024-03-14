@@ -31,6 +31,45 @@ class OnlineSoccerManagerService:
         bosscoins = self.driver.find_element("css selector", "span.pull-left")
         bosscoinsamount = bosscoins.text
         print(Fore.RED + "You have:", bosscoinsamount, "Bosscoins" + Style.RESET_ALL)
+
+    def checkConsent(self):
+            # Check if the consent button exists and click it if present
+            try:
+                time.sleep(5)
+                consent_button = self.driver.find_element('css selector', '.fc-cta-consent > p:nth-child(2)')
+                if consent_button:
+                    consent_button.click()
+                    print(Fore.YELLOW + "Consented, Waiting 5 seconds" + Style.RESET_ALL)
+                    time.sleep(5)
+            except:
+                print(Fore.YELLOW + "Consent button not found" + Style.RESET_ALL)    
+    
+    def checkSkillModal(self):
+        try:
+            level_result_window = self.driver.find_element('css selector', '#modal-dialog-skillratingupdate')
+            if level_result_window:
+                # Perform the action if the element is found
+                print(Fore.YELLOW + "Skill Modal Found, clicking and waiting for 5 seconds" + Style.RESET_ALL)
+                offset_x = level_result_window.location['x'] + 50
+                offset_y = level_result_window.location['y'] + 50
+                action = ActionChains(self.driver)
+                action.move_to_element_with_offset(level_result_window, offset_x, offset_y)
+                action.click()
+                action.perform()
+                # Optional: Wait for some time after the click
+                time.sleep(5)
+        except NoSuchElementException:
+            print(Fore.YELLOW + "No Skill Modal Found" + Style.RESET_ALL)
+
+    def checkWelcomeMessage(self):
+        try:
+            welcome_message = self.driver.find_element('css selector', 'button.btn-new > span:nth-child(1)')
+            if welcome_message:
+                print(Fore.YELLOW + "Found Welcome Message, clicking and waiting for 5 seconds" + Style.RESET_ALL)
+                welcome_message.click()
+                time.sleep(5)
+        except NoSuchElementException:
+            print(Fore.YELLOW + "No Welcome Message found" + Style.RESET_ALL)
     
     def login(self, user, password):
         while True:
@@ -118,58 +157,31 @@ class OnlineSoccerManagerService:
     def get_business_tokens(self):
         # call the login function
         self.login(self.user, self.password)
-        time.sleep(5)
 
-        # Check if the consent button exists and click it if present
-        try:
-            consent_button = self.driver.find_element('css selector', '.fc-cta-consent > p:nth-child(2)')
-            if consent_button:
-                consent_button.click()
-                print(Fore.YELLOW + "Consented, Waiting 5 seconds" + Style.RESET_ALL)
-                time.sleep(5)
-        except:
-            print(Fore.YELLOW + "Consent button not found" + Style.RESET_ALL)
-
-        try:
-            level_result_window = self.driver.find_element('css selector', '#modal-dialog-skillratingupdate')
-            if level_result_window:
-                # Perform the action if the element is found
-                print(Fore.YELLOW + "Skill Modal Found, clicking and waiting for 5 seconds" + Style.RESET_ALL)
-                offset_x = level_result_window.location['x'] + 50
-                offset_y = level_result_window.location['y'] + 50
-                action = ActionChains(self.driver)
-                action.move_to_element_with_offset(level_result_window, offset_x, offset_y)
-                action.click()
-                action.perform()
-                # Optional: Wait for some time after the click
-                time.sleep(5)
-        except NoSuchElementException:
-            print(Fore.YELLOW + "No Skill Modal Found" + Style.RESET_ALL)
-
-        try:
-            welcome_message = self.driver.find_element('css selector', 'button.btn-new > span:nth-child(1)')
-            if welcome_message:
-                print(Fore.YELLOW + "Found Welcome Message, clicking and waiting for 5 seconds" + Style.RESET_ALL)
-                welcome_message.click()
-                time.sleep(5)
-        except NoSuchElementException:
-            print(Fore.YELLOW + "No Welcome Message found" + Style.RESET_ALL)
+        #Check for the Consent and Skill Modal and Welcome message
+        self.checkConsent()
+        self.checkSkillModal()
+        self.checkWelcomeMessage()
+        self.getTokensAmount()
 
         print(Fore.YELLOW + "Going to Career page" + Style.RESET_ALL)
-        self.getTokensAmount()
         self.driver.get('https://en.onlinesoccermanager.com')
         time.sleep(5)
         isStoreOpen = False
+
         while True:
             try:
-                # go to the buissnes page in game
+                self.checkConsent()
+                # go to the store page in game
                 storepage = self.driver.find_element('css selector', 'li.dropdown:nth-child(3)')
                 if(isStoreOpen):
+                    self.checkConsent()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
+                    self.checkConsent()
                     print(Fore.YELLOW + 'Opening Store Page and Waiting for 5 Seconds' + Style.RESET_ALL)
                     storepage.click()
                     isStoreOpen = True
@@ -235,6 +247,17 @@ class OnlineSoccerManagerService:
                                 print(Fore.YELLOW + f'{time_left}s to close...' + Style.RESET_ALL)
                             else:
                                 print(Fore.GREEN + "Countdown finished, waiting for close button." + Style.RESET_ALL)
+                                # After handling countdown or duration, wait for and click the close button if necessary
+                                try:
+                                    close_button = WebDriverWait(self.driver, 10).until(
+                                        EC.element_to_be_clickable((By.CSS_SELECTOR, '#aipVideoAdUiCloseButton > div:nth-child(2)'))
+                                    )
+                                    time.sleep(2)
+                                    close_button.click()
+                                    print(Fore.YELLOW + 'Ad closed.' + Style.RESET_ALL)
+                                except TimeoutException:
+                                    print(Fore.YELLOW + 'Close button not needed or not found.' + Style.RESET_ALL)
+                                    self.getTokensAmount()
                                 break
                     else:
                         # Duration scenario
@@ -244,19 +267,6 @@ class OnlineSoccerManagerService:
                             total_ad_duration = total_minutes * 60 + total_seconds
                             print(Fore.YELLOW + f'Ad duration is {total_ad_duration} seconds, waiting for ad to finish...' + Style.RESET_ALL)
                             time.sleep(total_ad_duration + 5)
-
-                    # After handling countdown or duration, wait for and click the close button if necessary
-                    try:
-                        close_button = WebDriverWait(self.driver, 10).until(
-                            EC.element_to_be_clickable((By.CSS_SELECTOR, '#aipVideoAdUiCloseButton > div:nth-child(2)'))
-                        )
-                        time.sleep(2)
-                        close_button.click()
-                        print(Fore.YELLOW + 'Ad closed.' + Style.RESET_ALL)
-                    except TimeoutException:
-                        print(Fore.YELLOW + 'Close button not needed or not found.' + Style.RESET_ALL)
-                        self.getTokensAmount()
-
             except Exception as e:
                 print(Fore.RED + f"Error occurred while watching ad: {e}\nRefreshing page and retrying..." + Style.RESET_ALL)
                 self.driver.refresh()  # Refresh the page to attempt to recover from the error
