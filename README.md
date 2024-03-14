@@ -4,7 +4,7 @@ This is a simple script that uses Selenium to watch ads for a user in Online Soc
 
 Currently Ad Detection works by waiting 7 seconds after clicking the ad button for it to play and show the timer  and by finally by checking said timer
 
-Has some bugs
+If you have PiHole or any other alternative to it consider running this script on a host machine with a different DNS i.e: 8.8.8.8 as it stands your PiHole may block the ads from loading which causes issues in the script
 
 If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicardona
 
