@@ -178,6 +178,7 @@ class OnlineSoccerManagerService:
                     self.checkConsent()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
+                    self.getTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
@@ -187,6 +188,7 @@ class OnlineSoccerManagerService:
                     isStoreOpen = True
                     time.sleep(5)
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
+                    self.getTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
 
@@ -267,6 +269,8 @@ class OnlineSoccerManagerService:
                             total_ad_duration = total_minutes * 60 + total_seconds
                             print(Fore.YELLOW + f'Ad duration is {total_ad_duration} seconds, waiting for ad to finish...' + Style.RESET_ALL)
                             time.sleep(total_ad_duration + 5)
+                            self.getTokensAmount()
+
             except Exception as e:
                 print(Fore.RED + f"Error occurred while watching ad: {e}\nRefreshing page and retrying..." + Style.RESET_ALL)
                 self.driver.refresh()  # Refresh the page to attempt to recover from the error
