@@ -184,14 +184,18 @@ class OnlineSoccerManagerService:
         self.driver.get('https://en.onlinesoccermanager.com')
         time.sleep(5)
         isStoreOpen = False
-
         while True:
             try:
                 self.checkConsent()
+                self.checkSkillModal()
+                self.checkWelcomeMessage()
+                self.getTokensAmount()
                 # go to the store page in game
                 storepage = self.driver.find_element('css selector', 'li.dropdown:nth-child(3)')
                 if(isStoreOpen):
                     self.checkConsent()
+                    self.checkSkillModal()
+                    self.checkWelcomeMessage()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
                     self.getTokensAmount()
@@ -199,6 +203,8 @@ class OnlineSoccerManagerService:
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
                     self.checkConsent()
+                    self.checkSkillModal()
+                    self.checkWelcomeMessage()
                     print(Fore.YELLOW + 'Opening Store Page and Waiting for 5 Seconds' + Style.RESET_ALL)
                     storepage.click()
                     isStoreOpen = True
