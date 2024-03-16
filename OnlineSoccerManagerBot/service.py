@@ -25,6 +25,7 @@ class OnlineSoccerManagerService:
         self.initial_tokens = None
         self.total_tokens_gained = 0
         self.coins_gained_dates = []
+        self.daily_tokens_gained = 0
 
     def read_credentials(self):
         with open("details.txt", "r") as file:
@@ -41,6 +42,7 @@ class OnlineSoccerManagerService:
         else:
             tokens_gained = bosscoinsamount - self.initial_tokens
             self.total_tokens_gained += tokens_gained
+            self.daily_tokens_gained += tokens_gained
             self.coins_gained_dates.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained: {self.total_tokens_gained}" + Style.RESET_ALL)
 
@@ -52,6 +54,10 @@ class OnlineSoccerManagerService:
             self.start_time = datetime.now()
             self.total_tokens_gained = 0
             self.coins_gained_dates = []
+
+        if elapsed_time >= timedelta(days=1):
+            print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained}" + Style.RESET_ALL)
+            self.daily_tokens_gained = 0
 
     def checkConsent(self):
             # Check if the consent button exists and click it if present
@@ -197,23 +203,16 @@ class OnlineSoccerManagerService:
     def get_business_tokens(self):
         # call the login function
         self.login(self.user, self.password)
-
         #Check for the Consent and Skill Modal and Welcome message
         self.checkConsent()
         self.checkSkillModal()
         self.checkWelcomeMessage()
-        self.getTokensAmount()
-
         print(Fore.YELLOW + "Going to Career page" + Style.RESET_ALL)
         self.driver.get('https://en.onlinesoccermanager.com')
         time.sleep(5)
         isStoreOpen = False
         while True:
             try:
-                self.checkConsent()
-                self.checkSkillModal()
-                self.checkWelcomeMessage()
-                self.getTokensAmount()
                 # go to the store page in game
                 storepage = self.driver.find_element('css selector', 'li.dropdown:nth-child(3)')
                 if(isStoreOpen):
