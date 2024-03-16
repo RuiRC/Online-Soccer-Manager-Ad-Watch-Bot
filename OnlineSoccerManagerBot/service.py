@@ -16,7 +16,7 @@ class OnlineSoccerManagerService:
     def __init__(self):
         self.options = Options()
         self.options.set_preference("media.volume_scale", "0.0")
-        #self.options.add_argument("--headless")
+        self.options.add_argument("--headless")
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
         self.read_credentials()
