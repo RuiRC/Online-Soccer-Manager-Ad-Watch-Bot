@@ -7,6 +7,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from colorama import init, Fore, Style
+from datetime import datetime, timedelta
+import json
 import re
 import time
 
@@ -19,7 +21,36 @@ class OnlineSoccerManagerService:
         self.options.add_argument("--headless")
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
+        self.load_state()
         self.read_credentials()
+        self.hourly_ads_watched = {}
+        self.daily_ads_watched = {}
+
+    def load_state(self):
+        try:
+            with open('osm_state.json', 'r') as f:
+                state = json.load(f)
+                self.start_time = datetime.strptime(state['start_time'], '%Y-%m-%d %H:%M:%S')
+                self.initial_tokens = state.get('initial_tokens')
+                self.hourly_ads_watched = {datetime.strptime(k, '%Y-%m-%d %H:%M'): v for k, v in state.get('hourly_ads_watched', {}).items()}
+                self.daily_ads_watched = {datetime.strptime(k, '%Y-%m-%d'): v for k, v in state.get('daily_ads_watched', {}).items()}
+        except FileNotFoundError:
+            # If the file does not exist, initialize with default values
+            self.start_time = datetime.now()
+            self.initial_tokens = None
+            self.hourly_ads_watched = {}
+            self.daily_ads_watched = {}
+
+    def save_state(self):
+        state = {
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'initial_tokens': self.initial_tokens,
+            'hourly_ads_watched': {k.strftime('%Y-%m-%d %H:%M'): v for k, v in self.hourly_ads_watched.items()},
+            'daily_ads_watched': {k.strftime('%Y-%m-%d'): v for k, v in self.daily_ads_watched.items()},
+        }
+        with open('osm_state.json', 'w') as f:
+            json.dump(state, f)
+
 
     def read_credentials(self):
         with open("details.txt", "r") as file:
@@ -28,9 +59,28 @@ class OnlineSoccerManagerService:
             self.password = lines[1].strip()  
 
     def getTokensAmount(self):
+        now = datetime.now()
+        hour_key = now.replace(minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M')
+        day_key = now.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d')
+
+        if hour_key not in self.hourly_ads_watched:
+            self.hourly_ads_watched[hour_key] = 0
+        if day_key not in self.daily_ads_watched:
+            self.daily_ads_watched[day_key] = 0
+        
+        # Increment ads watched count here, assuming 1 token per ad watched
+        self.hourly_ads_watched[hour_key] += 1
+        self.daily_ads_watched[day_key] += 1
+
+        print(Fore.GREEN + f"Gained 1 bosscoin from ad on {now.strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained today from ads: {self.daily_ads_watched[day_key]}" + Style.RESET_ALL)
+
+        self.save_state()
+
+    def getCurrentTokensAmount(self):
         bosscoins = self.driver.find_element("css selector", "span.pull-left")
-        bosscoinsamount = bosscoins.text
-        print(Fore.RED + "You have:", bosscoinsamount, "Bosscoins" + Style.RESET_ALL)
+        bosscoinsamount = int(bosscoins.text.replace(",", ""))
+        print(Fore.YELLOW + "Your current bosscoins amount is: " + Style.RESET_ALL + Fore.GREEN + str(bosscoinsamount) + Style.RESET_ALL)
+
 
     def checkConsent(self):
             # Check if the consent button exists and click it if present
@@ -85,6 +135,7 @@ class OnlineSoccerManagerService:
     def reinitialize_controller(self):
         from OnlineSoccerManagerBot.controller import OnlineSoccerManagerController
         controller = OnlineSoccerManagerController()
+        self.save_state()
         controller.getTokens()
     
     def login(self, user, password):
@@ -176,23 +227,17 @@ class OnlineSoccerManagerService:
     def get_business_tokens(self):
         # call the login function
         self.login(self.user, self.password)
-
         #Check for the Consent and Skill Modal and Welcome message
         self.checkConsent()
         self.checkSkillModal()
         self.checkWelcomeMessage()
         self.getTokensAmount()
-
         print(Fore.YELLOW + "Going to Career page" + Style.RESET_ALL)
-        self.driver.get('https://en.onlinesoccermanager.com')
+        self.driver.get('https://en.onlinesoccermanager.com/Career')
         time.sleep(5)
         isStoreOpen = False
         while True:
             try:
-                self.checkConsent()
-                self.checkSkillModal()
-                self.checkWelcomeMessage()
-                self.getTokensAmount()
                 # go to the store page in game
                 storepage = self.driver.find_element('css selector', 'li.dropdown:nth-child(3)')
                 if(isStoreOpen):
@@ -201,7 +246,7 @@ class OnlineSoccerManagerService:
                     self.checkWelcomeMessage()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
-                    self.getTokensAmount()
+                    self.getCurrentTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
@@ -213,7 +258,7 @@ class OnlineSoccerManagerService:
                     isStoreOpen = True
                     time.sleep(5)
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
-                    self.getTokensAmount()
+                    self.getCurrentTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
 
