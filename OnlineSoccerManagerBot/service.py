@@ -7,9 +7,9 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from colorama import init, Fore, Style
+from datetime import datetime, timedelta
 import re
 import time
-from datetime import datetime, timedelta
 
 class OnlineSoccerManagerService:
 
@@ -45,6 +45,8 @@ class OnlineSoccerManagerService:
             self.daily_tokens_gained += tokens_gained
             self.coins_gained_dates.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained: {self.total_tokens_gained}" + Style.RESET_ALL)
+            # Update self.initial_tokens with the current amount after calculating the gain
+            self.initial_tokens = bosscoinsamount
 
         elapsed_time = datetime.now() - self.start_time
         if elapsed_time >= timedelta(hours=1):
@@ -58,6 +60,12 @@ class OnlineSoccerManagerService:
         if elapsed_time >= timedelta(days=1):
             print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained}" + Style.RESET_ALL)
             self.daily_tokens_gained = 0
+
+    def getCurrentTokensAmount(self):
+        bosscoins = self.driver.find_element("css selector", "span.pull-left")
+        bosscoinsamount = int(bosscoins.text.replace(",", ""))
+        print(Fore.YELLOW + "Your current bosscoins amount is: " + Style.RESET_ALL + Fore.GREEN + str(bosscoinsamount) + Style.RESET_ALL)
+
 
     def checkConsent(self):
             # Check if the consent button exists and click it if present
@@ -221,7 +229,7 @@ class OnlineSoccerManagerService:
                     self.checkWelcomeMessage()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
-                    self.getTokensAmount()
+                    self.getCurrentTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
@@ -233,7 +241,7 @@ class OnlineSoccerManagerService:
                     isStoreOpen = True
                     time.sleep(5)
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
-                    self.getTokensAmount()
+                    self.getCurrentTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
 
