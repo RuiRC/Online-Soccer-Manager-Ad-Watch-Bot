@@ -261,6 +261,8 @@ class OnlineSoccerManagerService:
                     if countdown_match:
                         print("Countdown Detected, Refreshing page...")
                         self.driver.refresh()
+                        isStoreOpen = False # Page Refreshed so Store closed
+                        time.sleep(5)  # Wait a brief moment for the page to reload
                         continue
                     else:
                         # Duration scenario
