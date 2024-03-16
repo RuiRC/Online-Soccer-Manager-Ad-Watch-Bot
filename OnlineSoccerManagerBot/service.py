@@ -109,6 +109,7 @@ class OnlineSoccerManagerService:
                 login_button.click()
                 print(Fore.YELLOW + 'Login Button clicked. Waiting 5 seconds for next actions...' + Style.RESET_ALL)
                 time.sleep(5)  # Keep the sleep if you need to wait for something after the click.
+                
                 # Enter the user name
                 self.driver.find_element("css selector", '#manager-name').send_keys(self.user)
                 print(Fore.GREEN + 'Username pasted: ' + self.user + Style.RESET_ALL)
@@ -116,7 +117,8 @@ class OnlineSoccerManagerService:
                 # Enter the password
                 password_field = self.driver.find_element("css selector", '#password')
                 password_field.send_keys(self.password)
-                print(Fore.GREEN + 'Password pasted: ' + self.password + Style.RESET_ALL)
+                password_censored = '*' * len(self.password)
+                print(Fore.GREEN + 'Password pasted: ' + password_censored + Style.RESET_ALL)   
                 time.sleep(5)
 
                 # Press the Enter key instead of clicking the login button
@@ -151,7 +153,8 @@ class OnlineSoccerManagerService:
                 # Enter the password
                 password_field = self.driver.find_element("css selector", '#password')
                 password_field.send_keys(password)
-                print(Fore.GREEN + 'Password pasted: ' + self.password + Style.RESET_ALL)
+                password_censored = '*' * len(self.password)
+                print(Fore.GREEN + 'Password pasted: ' + password_censored + Style.RESET_ALL)   
                 time.sleep(5)
 
                 # Press the Enter key instead of clicking the login button
