@@ -10,6 +10,8 @@ Still has some bugs when it comes to ads with a countdown to close
 
 If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicardona
 
+**The exe includes the latest code, so download that if you don't wish to install python**
+
 ## Prerequisites
 
 - Python 3
@@ -25,4 +27,3 @@ If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicar
 3. Install Selenium, Colorama
 4. Change the Details in details.txt to the correct ones, field order must be as is
 5. Run main.py
-6. Alternatively you can download the exe and follow the instructions on the releases page
