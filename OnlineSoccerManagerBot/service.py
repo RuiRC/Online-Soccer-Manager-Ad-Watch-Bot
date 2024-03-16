@@ -21,19 +21,8 @@ class OnlineSoccerManagerService:
         self.options.add_argument("--headless")
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
-        self.read_credentials()
         self.load_state()
-
-    def save_state(self):
-        state = {
-            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'initial_tokens': self.initial_tokens,
-            'total_tokens_gained': self.total_tokens_gained,
-            'coins_gained_dates': self.coins_gained_dates,
-            'daily_tokens_gained': self.daily_tokens_gained
-        }
-        with open('osm_state.json', 'w') as f:
-            json.dump(state, f)
+        self.read_credentials()
 
     def load_state(self):
         try:
@@ -44,6 +33,8 @@ class OnlineSoccerManagerService:
                 self.total_tokens_gained = state.get('total_tokens_gained', 0)
                 self.coins_gained_dates = state.get('coins_gained_dates', [])
                 self.daily_tokens_gained = state.get('daily_tokens_gained', 0)
+                self.last_hour_reset = datetime.strptime(state['last_hour_reset'], '%Y-%m-%d %H:%M:%S')
+                self.last_day_reset = datetime.strptime(state['last_day_reset'], '%Y-%m-%d %H:%M:%S')
         except FileNotFoundError:
             # If the file does not exist, initialize with default values
             self.start_time = datetime.now()
@@ -51,7 +42,21 @@ class OnlineSoccerManagerService:
             self.total_tokens_gained = 0
             self.coins_gained_dates = []
             self.daily_tokens_gained = 0
+            self.last_hour_reset = self.start_time
+            self.last_day_reset = self.start_time
 
+    def save_state(self):
+        state = {
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'initial_tokens': self.initial_tokens,
+            'total_tokens_gained': self.total_tokens_gained,
+            'coins_gained_dates': self.coins_gained_dates,
+            'daily_tokens_gained': self.daily_tokens_gained,
+            'last_hour_reset': self.last_hour_reset.strftime('%Y-%m-%d %H:%M:%S'),
+            'last_day_reset': self.last_day_reset.strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        with open('osm_state.json', 'w') as f:
+            json.dump(state, f)
 
     def read_credentials(self):
         with open("details.txt", "r") as file:
@@ -62,6 +67,7 @@ class OnlineSoccerManagerService:
     def getTokensAmount(self):
         bosscoins = self.driver.find_element("css selector", "span.pull-left")
         bosscoinsamount = int(bosscoins.text.replace(",", ""))
+
         if self.initial_tokens is None:
             self.initial_tokens = bosscoinsamount
             print(Fore.RED + f"Initial bosscoinsamount: {bosscoinsamount} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + Style.RESET_ALL)
@@ -76,19 +82,23 @@ class OnlineSoccerManagerService:
             self.initial_tokens = bosscoinsamount
             self.save_state()
 
-        elapsed_time = datetime.now() - self.start_time
-        if elapsed_time >= timedelta(hours=1):
+        elapsed_time_since_start = datetime.now() - self.start_time
+        elapsed_time_since_hour_reset = datetime.now() - self.last_hour_reset
+        elapsed_time_since_day_reset = datetime.now() - self.last_day_reset
+
+        if elapsed_time_since_hour_reset >= timedelta(hours=1):
             print(Fore.YELLOW + f"Total bosscoins gained in the last hour: {self.total_tokens_gained}" + Style.RESET_ALL)
             for date in self.coins_gained_dates:
                 print(f"Coins gained on {date}")
-            self.start_time = datetime.now()
+            self.last_hour_reset = datetime.now()
             self.total_tokens_gained = 0
             self.coins_gained_dates = []
             self.save_state()
 
-        if elapsed_time >= timedelta(days=1):
+        if elapsed_time_since_day_reset >= timedelta(days=1):
             print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained}" + Style.RESET_ALL)
             self.daily_tokens_gained = 0
+            self.last_day_reset = datetime.now()
             self.save_state()
 
     def getCurrentTokensAmount(self):
