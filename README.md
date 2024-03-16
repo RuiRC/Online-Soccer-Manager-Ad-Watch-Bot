@@ -12,6 +12,8 @@ If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicar
 
 **The exe includes the latest code, so download that if you don't wish to install python**
 
+As you may have noticed this repository has two branches which represent the codes for the two releases, for simplicity sake the main branch is the Profit branch as I prefer that one
+
 ## Prerequisites
 
 - A Windows Machine or Linux Machine i.e: Debian
