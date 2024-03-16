@@ -35,6 +35,8 @@ class OnlineSoccerManagerService:
                 self.daily_tokens_gained = state.get('daily_tokens_gained', 0)
                 self.last_hour_reset = datetime.strptime(state['last_hour_reset'], '%Y-%m-%d %H:%M:%S')
                 self.last_day_reset = datetime.strptime(state['last_day_reset'], '%Y-%m-%d %H:%M:%S')
+                self.hourly_tokens_gained = {datetime.strptime(k, '%Y-%m-%d %H:%M'): v for k, v in state.get('hourly_tokens_gained', {}).items()}
+                self.daily_tokens_gained = {datetime.strptime(k, '%Y-%m-%d'): v for k, v in state.get('daily_tokens_gained', {}).items()}
         except FileNotFoundError:
             # If the file does not exist, initialize with default values
             self.start_time = datetime.now()
@@ -44,6 +46,8 @@ class OnlineSoccerManagerService:
             self.daily_tokens_gained = 0
             self.last_hour_reset = self.start_time
             self.last_day_reset = self.start_time
+            self.hourly_tokens_gained = {}
+            self.daily_tokens_gained = {}
 
     def save_state(self):
         state = {
@@ -54,6 +58,8 @@ class OnlineSoccerManagerService:
             'daily_tokens_gained': self.daily_tokens_gained,
             'last_hour_reset': self.last_hour_reset.strftime('%Y-%m-%d %H:%M:%S'),
             'last_day_reset': self.last_day_reset.strftime('%Y-%m-%d %H:%M:%S'),
+            'hourly_tokens_gained': {k.strftime('%Y-%m-%d %H:%M'): v for k, v in self.hourly_tokens_gained.items()},
+            'daily_tokens_gained': {k.strftime('%Y-%m-%d'): v for k, v in self.daily_tokens_gained.items()},
         }
         with open('osm_state.json', 'w') as f:
             json.dump(state, f)
@@ -65,39 +71,46 @@ class OnlineSoccerManagerService:
             self.password = lines[1].strip()  
 
     def getTokensAmount(self):
-        bosscoins = self.driver.find_element("css selector", "span.pull-left")
+        now = datetime.now()
+        hour_start = now.replace(minute=0, second=0, microsecond=0)
+        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        bosscoins = self.driver.find_element(By.CSS_SELECTOR, "span.pull-left")
         bosscoinsamount = int(bosscoins.text.replace(",", ""))
 
         if self.initial_tokens is None:
             self.initial_tokens = bosscoinsamount
             print(Fore.RED + f"Initial bosscoinsamount: {bosscoinsamount} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + Style.RESET_ALL)
-            self.save_state()
         else:
             tokens_gained = bosscoinsamount - self.initial_tokens
-            self.total_tokens_gained += tokens_gained
-            self.daily_tokens_gained += tokens_gained
-            self.coins_gained_dates.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained: {self.total_tokens_gained}" + Style.RESET_ALL)
-            # Update self.initial_tokens with the current amount after calculating the gain
-            self.initial_tokens = bosscoinsamount
-            self.save_state()
+            
+            if hour_start not in self.hourly_tokens_gained:
+                self.hourly_tokens_gained[hour_start] = 0
+            if day_start not in self.daily_tokens_gained:
+                self.daily_tokens_gained[day_start] = 0
+
+            self.hourly_tokens_gained[hour_start] += tokens_gained
+            self.daily_tokens_gained[day_start] += tokens_gained
+
+            print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained today: {self.daily_tokens_gained[day_start]}" + Style.RESET_ALL)
+
+        # Update initial_tokens with the current amount after calculating the gain
+        self.initial_tokens = bosscoinsamount
+        self.save_state()
 
         elapsed_time_since_start = datetime.now() - self.start_time
         elapsed_time_since_hour_reset = datetime.now() - self.last_hour_reset
         elapsed_time_since_day_reset = datetime.now() - self.last_day_reset
 
         if elapsed_time_since_hour_reset >= timedelta(hours=1):
-            print(Fore.YELLOW + f"Total bosscoins gained in the last hour: {self.total_tokens_gained}" + Style.RESET_ALL)
-            for date in self.coins_gained_dates:
-                print(f"Coins gained on {date}")
+            print(Fore.YELLOW + f"Total bosscoins gained in the last hour: {self.hourly_tokens_gained[hour_start]}" + Style.RESET_ALL)
             self.last_hour_reset = datetime.now()
-            self.total_tokens_gained = 0
-            self.coins_gained_dates = []
+            self.hourly_tokens_gained[hour_start] = 0
             self.save_state()
 
         if elapsed_time_since_day_reset >= timedelta(days=1):
-            print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained}" + Style.RESET_ALL)
-            self.daily_tokens_gained = 0
+            print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained[day_start]}" + Style.RESET_ALL)
+            self.daily_tokens_gained[day_start] = 0
             self.last_day_reset = datetime.now()
             self.save_state()
 
