@@ -19,7 +19,7 @@ If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicar
 - Firefox browser
 - Selenium
 - Colorama
-- Have a decently high level account or be in as least two teams
+- Be in at least Two teams
 
 ## Installation
 
