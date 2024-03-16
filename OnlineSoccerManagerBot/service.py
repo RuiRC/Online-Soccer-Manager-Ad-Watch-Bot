@@ -70,6 +70,22 @@ class OnlineSoccerManagerService:
                 time.sleep(5)
         except NoSuchElementException:
             print(Fore.YELLOW + "No Welcome Message found" + Style.RESET_ALL)
+
+    def wait_and_restart(self, wait_time):
+        print(Fore.YELLOW + f"Detected a wait time of {wait_time // 60} minutes. Initiating restart process..." + Style.RESET_ALL)
+        self.driver.quit()  # Terminate the WebDriver session
+        for remaining in range(wait_time, 0, -60):
+            print(Fore.YELLOW + f"Restarting in {remaining // 60} minutes..." + Style.RESET_ALL)
+            time.sleep(60)
+        print(Fore.GREEN + "Restarting now..." + Style.RESET_ALL)
+        # After waiting, instead of directly calling start_process, 
+        # re-instantiate the controller to follow the original application flow
+        self.reinitialize_controller()
+    
+    def reinitialize_controller(self):
+        from OnlineSoccerManagerBot.controller import OnlineSoccerManagerController
+        controller = OnlineSoccerManagerController()
+        controller.getTokens()
     
     def login(self, user, password):
         while True:
@@ -168,14 +184,18 @@ class OnlineSoccerManagerService:
         self.driver.get('https://en.onlinesoccermanager.com')
         time.sleep(5)
         isStoreOpen = False
-
         while True:
             try:
                 self.checkConsent()
+                self.checkSkillModal()
+                self.checkWelcomeMessage()
+                self.getTokensAmount()
                 # go to the store page in game
                 storepage = self.driver.find_element('css selector', 'li.dropdown:nth-child(3)')
                 if(isStoreOpen):
                     self.checkConsent()
+                    self.checkSkillModal()
+                    self.checkWelcomeMessage()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
                     self.getTokensAmount()
@@ -183,6 +203,8 @@ class OnlineSoccerManagerService:
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
                     self.checkConsent()
+                    self.checkSkillModal()
+                    self.checkWelcomeMessage()
                     print(Fore.YELLOW + 'Opening Store Page and Waiting for 5 Seconds' + Style.RESET_ALL)
                     storepage.click()
                     isStoreOpen = True
@@ -210,18 +232,19 @@ class OnlineSoccerManagerService:
                         wait_time = 3600 # 1 hour
                     else:
                         wait_time = 0
-                    if wait_time > 0:
+                        
+                    if wait_time > 600:  # Wait time exceeds 10 minutes
+                        self.wait_and_restart(wait_time)
+                    elif wait_time > 0:
                         print(Fore.YELLOW + f"Waiting {wait_time // 60} minutes before attempting to watch the ad again." + Style.RESET_ALL)
-                        remaining_wait_time = wait_time
-                        # Click the button to close the "Can't Show Video" popup
+                        # Close the "Can't Show Video" popup
                         self.driver.find_element(By.CSS_SELECTOR, '.btn-compact > span:nth-child(1)').click()
-                        # Update every minute on how much longer to wait
-                        while remaining_wait_time > 0:
-                            time.sleep(60)  # Wait for 1 minute before updating the remaining time
-                            remaining_wait_time -= 60
-                            if remaining_wait_time > 0:
-                                print(Fore.YELLOW + f"Waiting {remaining_wait_time // 60} more minutes..." + Style.RESET_ALL)
-                    else:
+                        # Countdown the wait time minute by minute
+                        while wait_time > 0:
+                            time.sleep(60)
+                            wait_time -= 60
+                            if wait_time > 0:
+                                print(Fore.YELLOW + f"Waiting {wait_time // 60} more minutes..." + Style.RESET_ALL)
                         print(Fore.GREEN + "Wait time completed, proceeding..." + Style.RESET_ALL)
                 except NoSuchElementException:
                     print(Fore.YELLOW + 'No popup, checking ad status...' + Style.RESET_ALL)
@@ -233,34 +256,9 @@ class OnlineSoccerManagerService:
                     # Checking for countdown text
                     countdown_match = re.search(r'(\d+)s to close', ad_status_text)
                     if countdown_match:
-                        # Countdown scenario
-                        time_left = int(countdown_match.group(1))
-                        print(Fore.YELLOW + f'Countdown detected: {time_left}s to close...' + Style.RESET_ALL)
-                        while time_left > 0:
-                            time.sleep(1)
-                            time_left -= 1
-                            ad_status_element = WebDriverWait(self.driver, 10).until(
-                                EC.visibility_of_element_located((By.CSS_SELECTOR, '#duration-text-aip'))
-                            )
-                            ad_status_text = ad_status_element.text
-                            countdown_match = re.search(r'(\d+)s to close', ad_status_text)
-                            if countdown_match:
-                                time_left = int(countdown_match.group(1))
-                                print(Fore.YELLOW + f'{time_left}s to close...' + Style.RESET_ALL)
-                            else:
-                                print(Fore.GREEN + "Countdown finished, waiting for close button." + Style.RESET_ALL)
-                                # After handling countdown or duration, wait for and click the close button if necessary
-                                try:
-                                    close_button = WebDriverWait(self.driver, 10).until(
-                                        EC.element_to_be_clickable((By.CSS_SELECTOR, '#aipVideoAdUiCloseButton > div:nth-child(2)'))
-                                    )
-                                    time.sleep(2)
-                                    close_button.click()
-                                    print(Fore.YELLOW + 'Ad closed.' + Style.RESET_ALL)
-                                except TimeoutException:
-                                    print(Fore.YELLOW + 'Close button not needed or not found.' + Style.RESET_ALL)
-                                    self.getTokensAmount()
-                                break
+                        print("Countdown Detected, Refreshing page...")
+                        self.driver.refresh()
+                        continue
                     else:
                         # Duration scenario
                         duration_match = re.search(r'(\d+):(\d+) / (\d+):(\d+)', ad_status_text)
