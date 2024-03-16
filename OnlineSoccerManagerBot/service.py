@@ -16,7 +16,7 @@ class OnlineSoccerManagerService:
     def __init__(self):
         self.options = Options()
         self.options.set_preference("media.volume_scale", "0.0")
-        self.options.add_argument("--headless")
+        #self.options.add_argument("--headless")
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
         self.read_credentials()
@@ -260,7 +260,8 @@ class OnlineSoccerManagerService:
                     countdown_match = re.search(r'(\d+)s to close', ad_status_text)
                     if countdown_match:
                         print("Countdown Detected, Refreshing page...")
-                        self.driver.refresh()
+                        isStoreOpen = False # Page Refreshed so Store closed
+                        time.sleep(5)  # Wait a brief moment for the page to reload
                         continue
                     else:
                         # Duration scenario
