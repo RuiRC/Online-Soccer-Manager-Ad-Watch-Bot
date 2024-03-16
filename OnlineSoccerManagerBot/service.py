@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from colorama import init, Fore, Style
 from datetime import datetime, timedelta
+import json
 import re
 import time
 
@@ -21,11 +22,36 @@ class OnlineSoccerManagerService:
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
         self.read_credentials()
-        self.start_time = datetime.now()
-        self.initial_tokens = None
-        self.total_tokens_gained = 0
-        self.coins_gained_dates = []
-        self.daily_tokens_gained = 0
+        self.load_state()
+
+    def save_state(self):
+        state = {
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'initial_tokens': self.initial_tokens,
+            'total_tokens_gained': self.total_tokens_gained,
+            'coins_gained_dates': self.coins_gained_dates,
+            'daily_tokens_gained': self.daily_tokens_gained
+        }
+        with open('osm_state.json', 'w') as f:
+            json.dump(state, f)
+
+    def load_state(self):
+        try:
+            with open('osm_state.json', 'r') as f:
+                state = json.load(f)
+                self.start_time = datetime.strptime(state['start_time'], '%Y-%m-%d %H:%M:%S')
+                self.initial_tokens = state.get('initial_tokens')
+                self.total_tokens_gained = state.get('total_tokens_gained', 0)
+                self.coins_gained_dates = state.get('coins_gained_dates', [])
+                self.daily_tokens_gained = state.get('daily_tokens_gained', 0)
+        except FileNotFoundError:
+            # If the file does not exist, initialize with default values
+            self.start_time = datetime.now()
+            self.initial_tokens = None
+            self.total_tokens_gained = 0
+            self.coins_gained_dates = []
+            self.daily_tokens_gained = 0
+
 
     def read_credentials(self):
         with open("details.txt", "r") as file:
@@ -39,6 +65,7 @@ class OnlineSoccerManagerService:
         if self.initial_tokens is None:
             self.initial_tokens = bosscoinsamount
             print(Fore.RED + f"Initial bosscoinsamount: {bosscoinsamount} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + Style.RESET_ALL)
+            self.save_state()
         else:
             tokens_gained = bosscoinsamount - self.initial_tokens
             self.total_tokens_gained += tokens_gained
@@ -47,6 +74,7 @@ class OnlineSoccerManagerService:
             print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained: {self.total_tokens_gained}" + Style.RESET_ALL)
             # Update self.initial_tokens with the current amount after calculating the gain
             self.initial_tokens = bosscoinsamount
+            self.save_state()
 
         elapsed_time = datetime.now() - self.start_time
         if elapsed_time >= timedelta(hours=1):
@@ -56,10 +84,12 @@ class OnlineSoccerManagerService:
             self.start_time = datetime.now()
             self.total_tokens_gained = 0
             self.coins_gained_dates = []
+            self.save_state()
 
         if elapsed_time >= timedelta(days=1):
             print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained}" + Style.RESET_ALL)
             self.daily_tokens_gained = 0
+            self.save_state()
 
     def getCurrentTokensAmount(self):
         bosscoins = self.driver.find_element("css selector", "span.pull-left")
@@ -120,6 +150,7 @@ class OnlineSoccerManagerService:
     def reinitialize_controller(self):
         from OnlineSoccerManagerBot.controller import OnlineSoccerManagerController
         controller = OnlineSoccerManagerController()
+        self.save_state()
         controller.getTokens()
     
     def login(self, user, password):
