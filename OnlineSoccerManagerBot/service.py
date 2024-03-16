@@ -208,7 +208,7 @@ class OnlineSoccerManagerService:
         self.checkSkillModal()
         self.checkWelcomeMessage()
         print(Fore.YELLOW + "Going to Career page" + Style.RESET_ALL)
-        self.driver.get('https://en.onlinesoccermanager.com')
+        self.driver.get('https://en.onlinesoccermanager.com/Career')
         time.sleep(5)
         isStoreOpen = False
         while True:
