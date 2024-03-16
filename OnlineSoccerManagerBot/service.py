@@ -215,6 +215,7 @@ class OnlineSoccerManagerService:
         self.checkConsent()
         self.checkSkillModal()
         self.checkWelcomeMessage()
+        self.getTokensAmount()
         print(Fore.YELLOW + "Going to Career page" + Style.RESET_ALL)
         self.driver.get('https://en.onlinesoccermanager.com/Career')
         time.sleep(5)
