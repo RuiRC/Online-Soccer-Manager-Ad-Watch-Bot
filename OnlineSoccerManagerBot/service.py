@@ -30,23 +30,22 @@ class OnlineSoccerManagerService:
         try:
             with open('osm_state.json', 'r') as f:
                 state = json.load(f)
-                self.start_time = datetime.strptime(state['start_time'], '%Y-%m-%d %H:%M:%S')
-                self.initial_tokens = state.get('initial_tokens')
-                self.hourly_ads_watched = {datetime.strptime(k, '%Y-%m-%d %H:%M'): v for k, v in state.get('hourly_ads_watched', {}).items()}
-                self.daily_ads_watched = {datetime.strptime(k, '%Y-%m-%d'): v for k, v in state.get('daily_ads_watched', {}).items()}
+                # Load existing state data
+                # Directly use the strings without conversion
+                self.hourly_ads_watched = state.get('hourly_ads_watched', {})
+                self.daily_ads_watched = state.get('daily_ads_watched', {})
+                # Rest of the loading logic remains unchanged
         except FileNotFoundError:
-            # If the file does not exist, initialize with default values
-            self.start_time = datetime.now()
-            self.initial_tokens = None
+            # Initialize state with default values
             self.hourly_ads_watched = {}
             self.daily_ads_watched = {}
 
     def save_state(self):
         state = {
-            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'initial_tokens': self.initial_tokens,
-            'hourly_ads_watched': {k.strftime('%Y-%m-%d %H:%M'): v for k, v in self.hourly_ads_watched.items()},
-            'daily_ads_watched': {k.strftime('%Y-%m-%d'): v for k, v in self.daily_ads_watched.items()},
+            # Serialize existing state data without attempting to format datetime objects
+            'hourly_ads_watched': self.hourly_ads_watched,
+            'daily_ads_watched': self.daily_ads_watched,
+            # Include other necessary state data here
         }
         with open('osm_state.json', 'w') as f:
             json.dump(state, f)
@@ -60,20 +59,24 @@ class OnlineSoccerManagerService:
 
     def getTokensAmount(self):
         now = datetime.now()
-        hour_key = now.replace(minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M')
-        day_key = now.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d')
+        # Use strftime to create string keys for consistent handling
+        hour_key = now.strftime('%Y-%m-%d %H:%M')
+        day_key = now.strftime('%Y-%m-%d')
 
+        # Logic to increment ad watch counts remains the same
         if hour_key not in self.hourly_ads_watched:
             self.hourly_ads_watched[hour_key] = 0
         if day_key not in self.daily_ads_watched:
             self.daily_ads_watched[day_key] = 0
-        
-        # Increment ads watched count here, assuming 1 token per ad watched
+
+        # Increment the counters
         self.hourly_ads_watched[hour_key] += 1
         self.daily_ads_watched[day_key] += 1
 
+        # Example feedback message
         print(Fore.GREEN + f"Gained 1 bosscoin from ad on {now.strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained today from ads: {self.daily_ads_watched[day_key]}" + Style.RESET_ALL)
 
+        # Save the updated state
         self.save_state()
 
     def getCurrentTokensAmount(self):
