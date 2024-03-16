@@ -253,49 +253,12 @@ class OnlineSoccerManagerService:
                         EC.visibility_of_element_located((By.CSS_SELECTOR, '#duration-text-aip'))
                     )
                     ad_status_text = ad_status_element.text
-
                     # Checking for countdown text
                     countdown_match = re.search(r'(\d+)s to close', ad_status_text)
                     if countdown_match:
                         print("Countdown Detected, Refreshing page...")
                         self.driver.refresh()
-                        # Countdown scenario
-                        # time_left = int(countdown_match.group(1))
-                        # print(Fore.YELLOW + f'Countdown detected: {time_left}s to close...' + Style.RESET_ALL)
-                        # while True:
-                        #     time.sleep(1)
-                        #     try:
-                        #         ad_status_element = WebDriverWait(self.driver, 10).until(
-                        #             EC.visibility_of_element_located((By.CSS_SELECTOR, '#duration-text-aip'))
-                        #         )
-                        #         ad_status_text = ad_status_element.text
-                        #         new_countdown_match = re.search(r'(\d+)s to close', ad_status_text)
-                        #         if new_countdown_match:
-                        #             new_time_left = int(new_countdown_match.group(1))
-                        #             if new_time_left < time_left:
-                        #                 time_left = new_time_left
-                        #                 print(Fore.YELLOW + f'{time_left}s to close...' + Style.RESET_ALL)
-                        #             if time_left == 0:
-                        #                 break  # Exit loop if countdown reaches 0
-                        #         else:
-                        #             # If countdown text no longer present, assume countdown finished
-                        #             break
-                        #     except StaleElementReferenceException:
-                        #         print(Fore.RED + "Element reference became stale. Trying to locate again." + Style.RESET_ALL)
-                        #         continue  # Attempt to find and use the element again
-                        # print(Fore.GREEN + "Countdown finished, waiting for close button." + Style.RESET_ALL)
-                        # # Attempt to click the close button after countdown
-                        # try:
-                        #     close_button = WebDriverWait(self.driver, 10).until(
-                        #         EC.element_to_be_clickable((By.CSS_SELECTOR, '#aipVideoAdUiCloseButton > div:nth-child(2)'))
-                        #     )
-                        #     time.sleep(2)  # Wait a bit for the button to be surely clickable
-                        #     close_button.click()
-                        #     print(Fore.YELLOW + 'Ad closed.' + Style.RESET_ALL)
-                        # except TimeoutException:
-                        #     print(Fore.YELLOW + 'Close button not needed or not found.' + Style.RESET_ALL)
-                        #     self.getTokensAmount()
-                        # break
+                        continue
                     else:
                         # Duration scenario
                         duration_match = re.search(r'(\d+):(\d+) / (\d+):(\d+)', ad_status_text)
