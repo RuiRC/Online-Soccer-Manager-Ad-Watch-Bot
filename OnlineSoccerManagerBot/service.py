@@ -7,6 +7,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from colorama import init, Fore, Style
+from datetime import datetime, timedelta
+import json
 import re
 import time
 
@@ -19,7 +21,48 @@ class OnlineSoccerManagerService:
         self.options.add_argument("--headless")
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
+        self.load_state()
         self.read_credentials()
+
+    def load_state(self):
+        try:
+            with open('osm_state.json', 'r') as f:
+                state = json.load(f)
+                self.start_time = datetime.strptime(state['start_time'], '%Y-%m-%d %H:%M:%S')
+                self.initial_tokens = state.get('initial_tokens')
+                self.total_tokens_gained = state.get('total_tokens_gained', 0)
+                self.coins_gained_dates = state.get('coins_gained_dates', [])
+                self.daily_tokens_gained = state.get('daily_tokens_gained', 0)
+                self.last_hour_reset = datetime.strptime(state['last_hour_reset'], '%Y-%m-%d %H:%M:%S')
+                self.last_day_reset = datetime.strptime(state['last_day_reset'], '%Y-%m-%d %H:%M:%S')
+                self.hourly_tokens_gained = {datetime.strptime(k, '%Y-%m-%d %H:%M'): v for k, v in state.get('hourly_tokens_gained', {}).items()}
+                self.daily_tokens_gained = {datetime.strptime(k, '%Y-%m-%d'): v for k, v in state.get('daily_tokens_gained', {}).items()}
+        except FileNotFoundError:
+            # If the file does not exist, initialize with default values
+            self.start_time = datetime.now()
+            self.initial_tokens = None
+            self.total_tokens_gained = 0
+            self.coins_gained_dates = []
+            self.daily_tokens_gained = 0
+            self.last_hour_reset = self.start_time
+            self.last_day_reset = self.start_time
+            self.hourly_tokens_gained = {}
+            self.daily_tokens_gained = {}
+
+    def save_state(self):
+        state = {
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'initial_tokens': self.initial_tokens,
+            'total_tokens_gained': self.total_tokens_gained,
+            'coins_gained_dates': self.coins_gained_dates,
+            'daily_tokens_gained': self.daily_tokens_gained,
+            'last_hour_reset': self.last_hour_reset.strftime('%Y-%m-%d %H:%M:%S'),
+            'last_day_reset': self.last_day_reset.strftime('%Y-%m-%d %H:%M:%S'),
+            'hourly_tokens_gained': {k.strftime('%Y-%m-%d %H:%M'): v for k, v in self.hourly_tokens_gained.items()},
+            'daily_tokens_gained': {k.strftime('%Y-%m-%d'): v for k, v in self.daily_tokens_gained.items()},
+        }
+        with open('osm_state.json', 'w') as f:
+            json.dump(state, f)
 
     def read_credentials(self):
         with open("details.txt", "r") as file:
@@ -28,9 +71,54 @@ class OnlineSoccerManagerService:
             self.password = lines[1].strip()  
 
     def getTokensAmount(self):
+        now = datetime.now()
+        hour_start = now.replace(minute=0, second=0, microsecond=0)
+        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        bosscoins = self.driver.find_element(By.CSS_SELECTOR, "span.pull-left")
+        bosscoinsamount = int(bosscoins.text.replace(",", ""))
+
+        if self.initial_tokens is None:
+            self.initial_tokens = bosscoinsamount
+            print(Fore.RED + f"Initial bosscoinsamount: {bosscoinsamount} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + Style.RESET_ALL)
+        else:
+            tokens_gained = bosscoinsamount - self.initial_tokens
+            
+            if hour_start not in self.hourly_tokens_gained:
+                self.hourly_tokens_gained[hour_start] = 0
+            if day_start not in self.daily_tokens_gained:
+                self.daily_tokens_gained[day_start] = 0
+
+            self.hourly_tokens_gained[hour_start] += tokens_gained
+            self.daily_tokens_gained[day_start] += tokens_gained
+
+            print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained today: {self.daily_tokens_gained[day_start]}" + Style.RESET_ALL)
+
+        # Update initial_tokens with the current amount after calculating the gain
+        self.initial_tokens = bosscoinsamount
+        self.save_state()
+
+        elapsed_time_since_start = datetime.now() - self.start_time
+        elapsed_time_since_hour_reset = datetime.now() - self.last_hour_reset
+        elapsed_time_since_day_reset = datetime.now() - self.last_day_reset
+
+        if elapsed_time_since_hour_reset >= timedelta(hours=1):
+            print(Fore.YELLOW + f"Total bosscoins gained in the last hour: {self.hourly_tokens_gained[hour_start]}" + Style.RESET_ALL)
+            self.last_hour_reset = datetime.now()
+            self.hourly_tokens_gained[hour_start] = 0
+            self.save_state()
+
+        if elapsed_time_since_day_reset >= timedelta(days=1):
+            print(Fore.CYAN + f"Total bosscoins gained in the last 24 hours: {self.daily_tokens_gained[day_start]}" + Style.RESET_ALL)
+            self.daily_tokens_gained[day_start] = 0
+            self.last_day_reset = datetime.now()
+            self.save_state()
+
+    def getCurrentTokensAmount(self):
         bosscoins = self.driver.find_element("css selector", "span.pull-left")
-        bosscoinsamount = bosscoins.text
-        print(Fore.RED + "You have:", bosscoinsamount, "Bosscoins" + Style.RESET_ALL)
+        bosscoinsamount = int(bosscoins.text.replace(",", ""))
+        print(Fore.YELLOW + "Your current bosscoins amount is: " + Style.RESET_ALL + Fore.GREEN + str(bosscoinsamount) + Style.RESET_ALL)
+
 
     def checkConsent(self):
             # Check if the consent button exists and click it if present
@@ -85,6 +173,7 @@ class OnlineSoccerManagerService:
     def reinitialize_controller(self):
         from OnlineSoccerManagerBot.controller import OnlineSoccerManagerController
         controller = OnlineSoccerManagerController()
+        self.save_state()
         controller.getTokens()
     
     def login(self, user, password):
@@ -176,23 +265,17 @@ class OnlineSoccerManagerService:
     def get_business_tokens(self):
         # call the login function
         self.login(self.user, self.password)
-
         #Check for the Consent and Skill Modal and Welcome message
         self.checkConsent()
         self.checkSkillModal()
         self.checkWelcomeMessage()
         self.getTokensAmount()
-
         print(Fore.YELLOW + "Going to Career page" + Style.RESET_ALL)
-        self.driver.get('https://en.onlinesoccermanager.com')
+        self.driver.get('https://en.onlinesoccermanager.com/Career')
         time.sleep(5)
         isStoreOpen = False
         while True:
             try:
-                self.checkConsent()
-                self.checkSkillModal()
-                self.checkWelcomeMessage()
-                self.getTokensAmount()
                 # go to the store page in game
                 storepage = self.driver.find_element('css selector', 'li.dropdown:nth-child(3)')
                 if(isStoreOpen):
@@ -201,7 +284,7 @@ class OnlineSoccerManagerService:
                     self.checkWelcomeMessage()
                     #Click on the ad if the storage page is open
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
-                    self.getTokensAmount()
+                    self.getCurrentTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
                 else:
@@ -213,7 +296,7 @@ class OnlineSoccerManagerService:
                     isStoreOpen = True
                     time.sleep(5)
                     self.driver.find_element(By.CSS_SELECTOR, 'div.product-free:nth-child(1)').click()
-                    self.getTokensAmount()
+                    self.getCurrentTokensAmount()
                     print(Fore.YELLOW + 'Clicking ad and Waiting for 7 Seconds' + Style.RESET_ALL)
                     time.sleep(7)  # Wait for the ad to load and start playing
 
