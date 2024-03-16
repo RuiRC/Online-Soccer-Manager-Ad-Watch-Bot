@@ -14,6 +14,7 @@ If you like what you see consider buying me a coffee :) https://ko-fi.com/ruicar
 
 ## Prerequisites
 
+- A Windows Machine or Linux Machine i.e: Debian
 - Python 3
 - Firefox browser
 - Selenium
