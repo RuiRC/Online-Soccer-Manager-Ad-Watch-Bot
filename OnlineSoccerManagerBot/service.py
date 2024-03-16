@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from colorama import init, Fore, Style
 import re
 import time
+from datetime import datetime, timedelta
 
 class OnlineSoccerManagerService:
 
@@ -20,6 +21,10 @@ class OnlineSoccerManagerService:
         self.options.add_argument("--window-size=1280,720")
         self.driver = webdriver.Firefox(options=self.options)
         self.read_credentials()
+        self.start_time = datetime.now()
+        self.initial_tokens = None
+        self.total_tokens_gained = 0
+        self.coins_gained_dates = []
 
     def read_credentials(self):
         with open("details.txt", "r") as file:
@@ -29,8 +34,24 @@ class OnlineSoccerManagerService:
 
     def getTokensAmount(self):
         bosscoins = self.driver.find_element("css selector", "span.pull-left")
-        bosscoinsamount = bosscoins.text
-        print(Fore.RED + "You have:", bosscoinsamount, "Bosscoins" + Style.RESET_ALL)
+        bosscoinsamount = int(bosscoins.text.replace(",", ""))
+        if self.initial_tokens is None:
+            self.initial_tokens = bosscoinsamount
+            print(Fore.RED + f"Initial bosscoinsamount: {bosscoinsamount} on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}" + Style.RESET_ALL)
+        else:
+            tokens_gained = bosscoinsamount - self.initial_tokens
+            self.total_tokens_gained += tokens_gained
+            self.coins_gained_dates.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            print(Fore.GREEN + f"Gained {tokens_gained} bosscoins on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Total bosscoins gained: {self.total_tokens_gained}" + Style.RESET_ALL)
+
+        elapsed_time = datetime.now() - self.start_time
+        if elapsed_time >= timedelta(hours=1):
+            print(Fore.YELLOW + f"Total bosscoins gained in the last hour: {self.total_tokens_gained}" + Style.RESET_ALL)
+            for date in self.coins_gained_dates:
+                print(f"Coins gained on {date}")
+            self.start_time = datetime.now()
+            self.total_tokens_gained = 0
+            self.coins_gained_dates = []
 
     def checkConsent(self):
             # Check if the consent button exists and click it if present
